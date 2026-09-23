@@ -1,0 +1,23 @@
+# Simulation & Safety Config
+seed: 42
+tick_interval: 2.0
+
+thresholds:
+  proximity_radius_m: 8.0
+  max_hydraulic_temp_c: 85.0
+  min_fuel_level_pct: 15.0
+  max_idle_minutes: 20.0
+  overspeed_margin_kmh: 5.0
+  harsh_brake_g: 0.4
+  harsh_accel_g: 0.4
+  max_payload_tons: 65.0 # Typical 770 payload is around 38-40t, 777 is 90t. Average 65t for simulation limits.
+  tyre_pressure_min_psi: 85.0
+  tyre_pressure_max_psi: 120.0
+  coolant_temp_max_c: 95.0
+  engine_oil_pressure_min_kpa: 200.0
+
+physics:
+  fuel_burn_idle: 0.001    # % per sec
+  fuel_burn_loaded: 0.008  # % per sec
+  cooling_rate: 0.05       # deg C per sec
+  heating_rate: 0.1        # deg C per sec (scales with load)
