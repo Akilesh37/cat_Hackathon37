@@ -105,25 +105,21 @@ const AdminControlPanel = () => {
     );
 }
 
+import { useGlobalStore } from '../../store/globalStore';
+
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [machines, setMachines] = useState<any[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [operators, setOperators] = useState<any[]>([]);
-  const { alerts } = useAlerts();
-  const { positions } = useLiveLocation({ mode: 'admin' });
-  const { telemetry } = useTelemetry();
+  const machines = useGlobalStore(state => state.machines);
+  const tasks = useGlobalStore(state => state.tasks);
+  const operators = useGlobalStore(state => state.operators);
+  const alerts = useGlobalStore(state => state.alerts);
+  const positions = useGlobalStore(state => state.livePositions);
+  const telemetry = useGlobalStore(state => state.liveTelemetry);
 
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 10000);
     return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    Promise.all([api.getMachines(), api.getTasks(), api.getOperators()])
-      .then(([m, t, o]) => { setMachines(m || []); setTasks(t || []); setOperators(o || []); })
-      .catch(e => console.error("API Error", e));
   }, []);
 
   // Merge telemetry with machines

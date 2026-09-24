@@ -231,7 +231,6 @@ class SyntheticEngine:
         return updates
 
     async def broadcast_updates(self, updates):
-        print(f"Broadcasting {len(updates)} updates")
         for u in updates:
             m = u["machine"]
             # Broadcast Position
@@ -300,10 +299,10 @@ class SyntheticEngine:
                 if 4 in state["active_scenarios"]: state["active_scenarios"].remove(4)
 
             # ETA and Performance Updates
-            if state["cycle_count"] > 0 and state["is_truck"]:
+            if u["cycle"] > 0 and state["is_truck"]:
                 task = self.db.query(models.Task).filter(models.Task.machine_id == m.id, models.Task.status == "In Progress").first()
                 if task:
-                    task.completed_quantity = state["cycle_count"] * self.thresholds["max_payload_tons"]
+                    task.completed_quantity = u["cycle"] * self.thresholds["max_payload_tons"]
                     
                     # Update ETA
                     eta_rec = self.db.query(models.ETAPrediction).filter(models.ETAPrediction.task_id == task.id).first()
@@ -376,24 +375,18 @@ class SyntheticEngine:
         })
 
 async def live_loop(speed_multiplier: float, scenario_rate: float, seed: int):
-    try:
-        logger.info(f"Starting Live Engine (Speed {speed_multiplier}x)")
-        engine = SyntheticEngine("config.yaml", seed)
-        engine.init_state()
-        
-        interval = engine.tick_interval / speed_multiplier
-        time_now = datetime.utcnow()
-        
-        while True:
-            updates = engine.tick(time_now, scenario_rate)
-            await engine.broadcast_updates(updates)
-            time_now += timedelta(seconds=engine.tick_interval)
-            await asyncio.sleep(interval)
-    except Exception as e:
-        import traceback
-        logger.error(f"SIMULATOR CRASHED: {e}")
-        logger.error(traceback.format_exc())
-
+    logger.info(f"Starting Live Engine (Speed {speed_multiplier}x)")
+    engine = SyntheticEngine("config.yaml", seed)
+    engine.init_state()
+    
+    interval = engine.tick_interval / speed_multiplier
+    time_now = datetime.utcnow()
+    
+    while True:
+        updates = engine.tick(time_now, scenario_rate)
+        await engine.broadcast_updates(updates)
+        time_now += timedelta(seconds=engine.tick_interval)
+        await asyncio.sleep(interval)
 
 def batch_loop(days: int, scenario_rate: float, seed: int):
     logger.info(f"Starting Batch Engine for {days} days...")

@@ -52,7 +52,16 @@ const AppLayout: React.FC<{ children: React.ReactNode; isOperator?: boolean }> =
   );
 };
 
+import { useGlobalStore, bindSocketsToStore } from './store/globalStore';
+
 export const App: React.FC = () => {
+  const fetchInitialData = useGlobalStore((state) => state.fetchInitialData);
+
+  React.useEffect(() => {
+    fetchInitialData();
+    bindSocketsToStore();
+  }, [fetchInitialData]);
+
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />

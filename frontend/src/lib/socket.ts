@@ -7,6 +7,17 @@ const SOCKET_URL = window.location.origin;
 let locationSocket: Socket | null = null;
 let telemetrySocket: Socket | null = null;
 let alertsSocket: Socket | null = null;
+let tasksSocket: Socket | null = null;
+
+export function getTasksSocket(): Socket {
+  if (!tasksSocket) {
+    tasksSocket = io(`${SOCKET_URL}/tasks`, {
+      transports: ['websocket', 'polling'],
+      autoConnect: true,
+    });
+  }
+  return tasksSocket;
+}
 
 export function getLocationSocket(): Socket {
   if (!locationSocket) {

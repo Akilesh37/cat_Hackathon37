@@ -249,26 +249,17 @@ function TaskDetailsPanel() {
 }
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
+import { useGlobalStore } from '../../store/globalStore';
 
 export const TaskAssignment: React.FC = () => {
   const navigate = useNavigate();
   const [createdTask, setCreatedTask] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'Task List' | 'Operators' | 'Machines'>('Task List');
   
-  const [machines, setMachines] = useState<any[]>([]);
-  const [operators, setOperators] = useState<any[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const { alerts } = useAlerts();
-  
-  useEffect(() => {
-    Promise.all([api.getMachines(), api.getOperators(), api.getTasks()])
-      .then(([m, o, t]) => {
-        setMachines(m || []);
-        setOperators(o || []);
-        setTasks(t || []);
-      })
-      .catch(e => console.error("Error fetching", e));
-  }, []);
+  const machines = useGlobalStore(state => state.machines);
+  const operators = useGlobalStore(state => state.operators);
+  const tasks = useGlobalStore(state => state.tasks);
+  const alerts = useGlobalStore(state => state.alerts);
 
   // Compute Task list
   const liveTasks = tasks.map(t => {
@@ -283,8 +274,8 @@ export const TaskAssignment: React.FC = () => {
       target: `${t.target_quantity} ${t.unit}`,
       progress: t.target_quantity > 0 ? Math.min(100, Math.round(((t.completed_quantity || 0) / t.target_quantity) * 100)) : 0,
       status: t.status,
-      start: new Date(t.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-      end: new Date(t.expected_end_time || t.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+      start: t.start_time ? new Date(t.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'N/A',
+      end: t.expected_end_time ? new Date(t.expected_end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'N/A'
     };
   });
 
@@ -299,8 +290,9 @@ export const TaskAssignment: React.FC = () => {
   const materialMovement = Array.from(new Set(tasks.map(t => t.material_type).filter(Boolean))).map((mat: any, idx) => {
     const matTasks = tasks.filter(t => t.material_type === mat);
     const done = matTasks.reduce((sum, t) => sum + (t.completed_quantity || 0), 0);
+    const target = matTasks.reduce((sum, t) => sum + (t.target_quantity || 0), 0) || 5000;
     const colors = ['#F7941E', '#8B5E3C', '#8A8A8A', '#2E6FDB'];
-    return { name: mat, value: `${done} m³`, color: colors[idx % 4], pct: Math.min(100, Math.round((done / 5000) * 100)) }; // mock percentage scaling
+    return { name: mat, value: `${done} m³`, color: colors[idx % 4], pct: Math.min(100, Math.round((done / target) * 100)) };
   });
 
   const recentActivities = alerts.slice(0, 5).map(a => ({

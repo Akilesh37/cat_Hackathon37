@@ -2,50 +2,37 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useSessionStore } from '../../store/sessionStore';
+import { useGlobalStore } from '../../store/globalStore';
 import { TaskDetailsCard } from '../../components/TaskDetailsCard';
 import { Truck } from 'lucide-react';
+import { getTasksSocket } from '../../lib/socket';
 
 export const MyTasks: React.FC = () => {
   const { user } = useSessionStore();
   const navigate = useNavigate();
-
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  const allTasks = useGlobalStore(state => state.tasks);
+  const tasks = allTasks.filter(t => t.operator_id === user?.userId);
+  const initialized = useGlobalStore(state => state.initialized);
+  const loading = !initialized;
 
   useEffect(() => {
-    async function loadTasks() {
-      try {
-        const res = await api.getTasks(user?.userId);
-        setTasks(res);
-      } catch (err) {
-        console.error('Failed to load tasks:', err);
-      } finally {
-        setLoading(false);
-      }
+    // Real-time update for new assignments room joining
+    const socket = getTasksSocket();
+    if (socket.connected && user?.userId) {
+      socket.emit('join_operator_room', user.userId);
     }
-    loadTasks();
     
-    // Real-time update for new assignments
-    import('socket.io-client').then(({ io }) => {
-      const socket = io('http://localhost:8000/tasks', { transports: ['websocket'] });
-      
-      socket.on('connect', () => {
-        if (user?.userId) {
-          socket.emit('join_operator_room', user.userId);
-        }
-      });
-
-      socket.on('new_task', (taskData) => {
-        setTasks(prev => [taskData, ...prev]);
-        // Also reload just in case there's missing joined fields
-        loadTasks();
-      });
-
-      return () => {
-        socket.disconnect();
-      };
-    });
+    const onConnect = () => {
+      if (user?.userId) {
+        socket.emit('join_operator_room', user.userId);
+      }
+    };
     
+    socket.on('connect', onConnect);
+    return () => {
+      socket.off('connect', onConnect);
+    };
   }, [user]);
 
   const handleStart = async (task: any) => {
