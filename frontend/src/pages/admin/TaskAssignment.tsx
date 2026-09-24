@@ -51,8 +51,21 @@ function TaskAssignForm({ onCreated, machines = [], operators = [] }: { onCreate
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    
     try {
-      const task = await api.createTask({
+      const today = new Date();
+      const [startH, startM] = form.start_time.split(':').map(Number);
+      const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), startH, startM, 0);
+      
+      const [endH, endM] = form.end_time.split(':').map(Number);
+      let endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), endH, endM, 0);
+      
+      if (endDate < startDate) {
+        endDate.setDate(endDate.getDate() + 1); // next day
+      }
+
+      const taskData = {
+        task_code: 'TSK-' + Math.floor(Math.random() * 10000).toString(),
         task_type: form.task_type,
         operator_id: parseInt(form.operator),
         machine_id: parseInt(form.vehicle),
@@ -62,17 +75,21 @@ function TaskAssignForm({ onCreated, machines = [], operators = [] }: { onCreate
         drop_location: form.drop_location,
         location_zone: 'Zone B',
         priority: form.priority,
-        start_time: '2026-09-23T14:00:00',
-        end_time: '2026-09-23T22:00:00',
+        start_time: startDate.toISOString(),
+        expected_end_time: endDate.toISOString(),
         notes: form.notes,
-      });
-      onCreated(task);
+      };
+
+      const task = await api.createTask(taskData);
+      // Wait, api.createTask might return { success: true, assignment: ... } or just task.
+      const assignedTask = task.assignment || task;
+      
+      onCreated(assignedTask);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 4000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create task:', err);
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 4000);
+      alert(err.message || 'Failed to assign task. Please check details and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -267,7 +284,7 @@ export const TaskAssignment: React.FC = () => {
       progress: t.target_quantity > 0 ? Math.min(100, Math.round(((t.completed_quantity || 0) / t.target_quantity) * 100)) : 0,
       status: t.status,
       start: new Date(t.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-      end: new Date(t.end_time || t.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+      end: new Date(t.expected_end_time || t.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
     };
   });
 

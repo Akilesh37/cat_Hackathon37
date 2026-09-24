@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
@@ -30,12 +30,38 @@ def get_task(task_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Task not found")
     return task
 
-@router.post("", response_model=schemas.TaskResponse)
-def assign_task(payload: schemas.TaskCreate, db: Session = Depends(get_db)):
+@router.post("", response_model=schemas.TaskResponse, status_code=status.HTTP_201_CREATED)
+async def assign_task(payload: schemas.TaskCreate, db: Session = Depends(get_db)):
     """
     Creates a new operational task.
     Validates weather risk and calculates initial distance and ETA.
     """
+    # Validation Rules
+    if payload.target_quantity <= 0:
+        raise HTTPException(status_code=400, detail="Target quantity must be greater than 0")
+    if payload.from_location and payload.to_location and payload.from_location == payload.to_location:
+        raise HTTPException(status_code=400, detail="Pickup and drop locations cannot be the same")
+    if payload.start_time and payload.expected_end_time:
+        if payload.expected_end_time <= payload.start_time:
+            # Note: The frontend handles night shifts before sending, but if it's still <= it's invalid
+            raise HTTPException(status_code=400, detail="End time must be after start time")
+
+    if payload.operator_id:
+        active_task = db.query(models.Task).filter(
+            models.Task.operator_id == payload.operator_id,
+            models.Task.status == "In Progress"
+        ).first()
+        if active_task:
+            raise HTTPException(status_code=409, detail=f"Operator is already busy with task {active_task.task_code}")
+
+    if payload.machine_id:
+        active_mach_task = db.query(models.Task).filter(
+            models.Task.machine_id == payload.machine_id,
+            models.Task.status == "In Progress"
+        ).first()
+        if active_mach_task:
+            raise HTTPException(status_code=409, detail=f"Machine is already busy with task {active_mach_task.task_code}")
+            
     # Calculate distance if route_geojson or from/to coords exist
     distance_km = 0.0
     if payload.route_geojson and len(payload.route_geojson) > 1:
@@ -81,7 +107,9 @@ def assign_task(payload: schemas.TaskCreate, db: Session = Depends(get_db)):
         route_duration_min=duration_min,
         weather_risk_flag=weather_risk,
         created_by="Supervisor Admin",
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
+        start_time=payload.start_time,
+        expected_end_time=payload.expected_end_time
     )
 
     db.add(task)
@@ -109,7 +137,37 @@ def assign_task(payload: schemas.TaskCreate, db: Session = Depends(get_db)):
         confidence_score=eta_calc["confidence_score"]
     )
     db.add(eta_row)
+    
+    # Update machine status
+    machine = db.query(models.Machine).filter(models.Machine.id == task.machine_id).first()
+    if machine:
+        machine.status = "assigned"
+        
     db.commit()
+
+    import sockets
+    task_dict = {
+        "id": task.id,
+        "task_code": task.task_code,
+        "task_type": task.task_type,
+        "machine_id": task.machine_id,
+        "operator_id": task.operator_id,
+        "status": task.status,
+        "priority": task.priority,
+        "target_quantity": task.target_quantity,
+        "from_location": task.from_location,
+        "to_location": task.to_location,
+        "unit": task.unit,
+        "created_at": task.created_at.isoformat(),
+        "start_time": task.start_time.isoformat() if task.start_time else None,
+        "expected_end_time": task.expected_end_time.isoformat() if task.expected_end_time else None,
+    }
+    
+    if task.operator_id:
+        try:
+            await sockets.broadcast_new_task(task_dict, task.operator_id)
+        except Exception as e:
+            print(f"Error broadcasting: {e}")
 
     return task
 

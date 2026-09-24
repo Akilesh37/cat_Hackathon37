@@ -9,7 +9,7 @@ router = APIRouter(prefix="/operators", tags=["Operators"])
 
 @router.get("", response_model=List[schemas.OperatorResponse])
 def get_operators(db: Session = Depends(get_db)):
-    return db.query(models.Operator).all()
+    return db.query(models.Operator).filter(models.Operator.status != "inactive").all()
 
 @router.get("/{operator_id}", response_model=schemas.OperatorResponse)
 def get_operator(operator_id: int, db: Session = Depends(get_db)):

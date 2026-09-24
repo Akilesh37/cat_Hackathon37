@@ -71,6 +71,20 @@ async def on_alerts_connect(sid, environ):
 async def on_alerts_disconnect(sid):
     logger.info(f"[Alerts] Client disconnected: {sid}")
 
+# --- NAMESPACE: /tasks ---
+@sio.on("connect", namespace="/tasks")
+async def on_tasks_connect(sid, environ):
+    logger.info(f"[Tasks] Client connected: {sid}")
+
+@sio.on("join_operator_room", namespace="/tasks")
+async def join_operator_room_tasks(sid, operator_id: int):
+    room_name = f"operator_{operator_id}"
+    await sio.enter_room(sid, room_name, namespace="/tasks")
+    logger.info(f"[Tasks] Client {sid} joined room {room_name}")
+
+@sio.on("disconnect", namespace="/tasks")
+async def on_tasks_disconnect(sid):
+    logger.info(f"[Tasks] Client disconnected: {sid}")
 
 # Helper broadcast functions called by simulator.py and rules_engine.py
 
@@ -113,3 +127,12 @@ async def broadcast_alert_resolved(alert_id: int):
         await sio.emit("alert_resolved", {"id": alert_id}, namespace="/alerts")
     except Exception as e:
         logger.error(f"Error broadcasting alert resolved: {e}")
+
+async def broadcast_new_task(task_data: dict, operator_id: int):
+    """
+    Broadcasts a new task assignment to the specific operator.
+    """
+    try:
+        await sio.emit("new_task", task_data, room=f"operator_{operator_id}", namespace="/tasks")
+    except Exception as e:
+        logger.error(f"Error broadcasting new task: {e}")

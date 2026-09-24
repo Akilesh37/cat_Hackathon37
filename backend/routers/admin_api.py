@@ -44,22 +44,31 @@ def update_operator(operator_id: int, operator_update: schemas.OperatorUpdate, d
     db.refresh(db_op)
     return db_op
 
-@router.delete("/operators/{operator_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/operators/{operator_id}")
 def soft_delete_operator(operator_id: int, db: Session = Depends(get_db), admin=Depends(get_current_admin)):
     db_op = db.query(models.Operator).filter(models.Operator.id == operator_id).first()
     if not db_op:
         raise HTTPException(status_code=404, detail="Operator not found")
     
-    # Check active assignments
+    # Check active assignments (don't force cancel, ask admin to reassign as per STEP 3 logic)
     active_assignment = db.query(models.Assignment).filter(
         models.Assignment.operator_id == operator_id,
         models.Assignment.status == "active"
     ).first()
     if active_assignment:
-        raise HTTPException(status_code=400, detail="Cannot delete operator with active assignment")
+        raise HTTPException(status_code=409, detail="Complete or reassign the active task first")
+        
+    active_task = db.query(models.Task).filter(
+        models.Task.operator_id == operator_id,
+        models.Task.status == "In Progress"
+    ).first()
+    if active_task:
+        raise HTTPException(status_code=409, detail="Complete or reassign the active task first")
     
     db_op.status = "inactive"
     db.commit()
+    
+    return {"success": True, "id": operator_id}
 
 # --- Machines ---
 

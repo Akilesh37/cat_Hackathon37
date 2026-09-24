@@ -24,6 +24,28 @@ export const MyTasks: React.FC = () => {
       }
     }
     loadTasks();
+    
+    // Real-time update for new assignments
+    import('socket.io-client').then(({ io }) => {
+      const socket = io('http://localhost:8000/tasks', { transports: ['websocket'] });
+      
+      socket.on('connect', () => {
+        if (user?.userId) {
+          socket.emit('join_operator_room', user.userId);
+        }
+      });
+
+      socket.on('new_task', (taskData) => {
+        setTasks(prev => [taskData, ...prev]);
+        // Also reload just in case there's missing joined fields
+        loadTasks();
+      });
+
+      return () => {
+        socket.disconnect();
+      };
+    });
+    
   }, [user]);
 
   const handleStart = async (task: any) => {

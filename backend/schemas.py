@@ -156,7 +156,8 @@ class TaskBase(BaseModel):
     priority: str = "Medium"
 
 class TaskCreate(TaskBase):
-    pass
+    start_time: Optional[datetime] = None
+    expected_end_time: Optional[datetime] = None
 
 class TaskUpdateStatus(BaseModel):
     status: str

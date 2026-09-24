@@ -6,9 +6,21 @@ export async function fetchJson<T>(url: string, options: RequestInit = {}): Prom
     ...(options.headers || {})
   };
   const response = await fetch(`${API_BASE}${url}`, { ...options, headers });
+  
+  if (response.status === 204) {
+    return {} as T;
+  }
+  
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API Error ${response.status}: ${errorText || response.statusText}`);
+    let errorText = await response.text();
+    try {
+      const errJson = JSON.parse(errorText);
+      if (errJson.detail) errorText = errJson.detail;
+      else if (errJson.message) errorText = errJson.message;
+    } catch (e) {
+      // Ignore JSON parse error on error response
+    }
+    throw new Error(errorText || response.statusText);
   }
   return response.json();
 }
@@ -26,13 +38,32 @@ export const api = {
   getOperator: (id: number) => fetchJson<any>(`/operators/${id}`),
   getOperatorPerformance: (id: number) => fetchJson<any>(`/operators/${id}/performance`),
   createOperator: (data: any) => {
-    const token = localStorage.getItem('token');
+    const session = JSON.parse(localStorage.getItem('cat_user_session') || '{}');
     return fetchJson<any>('/admin/operators', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${session.token}`
       },
       body: JSON.stringify(data)
+    });
+  },
+  updateOperator: (id: number, data: any) => {
+    const session = JSON.parse(localStorage.getItem('cat_user_session') || '{}');
+    return fetchJson<any>(`/admin/operators/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${session.token}`
+      },
+      body: JSON.stringify(data)
+    });
+  },
+  deleteOperator: (id: number) => {
+    const session = JSON.parse(localStorage.getItem('cat_user_session') || '{}');
+    return fetchJson<any>(`/admin/operators/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${session.token}`
+      }
     });
   },
 
