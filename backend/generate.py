@@ -314,7 +314,7 @@ class SyntheticEngine:
                     eta_rec.weather_adjustment_min = 20.0 if self.weather == "Rain" else 0.0
                     eta_rec.idle_adjustment_min = (u["idle_seconds"] / 60.0)
                     eta_rec.machine_condition_adjustment_min = 15.0 if 7 in state["active_scenarios"] else 0.0
-                    eta_rec.final_eta_min = eta_rec.base_estimate_min + eta_rec.weather_adjustment_min + eta_rec.idle_adjustment_min + eta_rec.machine_condition_adjustment_min
+                    eta_rec.final_eta_min = (eta_rec.base_estimate_min or 45.0) + eta_rec.weather_adjustment_min + eta_rec.idle_adjustment_min + eta_rec.machine_condition_adjustment_min
                     
                     # Update Performance
                     perf = self.db.query(models.OperatorPerformance).filter(models.OperatorPerformance.task_id == task.id).first()
