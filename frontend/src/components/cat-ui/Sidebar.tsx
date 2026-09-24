@@ -35,10 +35,9 @@ export const Sidebar: React.FC = () => {
     { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
     { name: 'Operators', path: '/admin/operators', icon: Users },
     { name: 'Machines', path: '/admin/fleet', icon: Truck },
-    { name: 'Work Schedule', path: '/admin/monitoring', icon: ClipboardList },
     { name: 'Task Assignment', path: '/admin/tasks/assign', icon: CheckSquare },
-    { name: 'Load / Trip Logs', path: '/admin/reports', icon: FileText },
-    { name: 'Fuel Management', path: '/admin/maintenance', icon: Fuel },
+    { name: 'Monitoring', path: '/admin/monitoring', icon: ClipboardList },
+    { name: 'Incidents', path: '/admin/incidents', icon: AlertTriangle },
     { name: 'Maintenance', path: '/admin/maintenance', icon: Wrench },
     { name: 'Reports', path: '/admin/reports', icon: FileText },
     { name: 'Settings', path: '/admin/settings', icon: Settings },
@@ -48,12 +47,10 @@ export const Sidebar: React.FC = () => {
     { name: 'Home', path: '/operator/dashboard', icon: LayoutDashboard },
     { name: 'My Tasks', path: '/operator/tasks', icon: CheckSquare },
     { name: 'Map', path: '/operator/live', icon: MapPin },
-    { name: 'Progress', path: '/operator/health', icon: Activity },
     { name: 'Machine Status', path: '/operator/health', icon: Truck },
-    { name: 'Logs', path: '/operator/summary/1', icon: ClipboardList },
+    { name: 'Safety Check', path: '/operator/safety-check', icon: ShieldCheck },
     { name: 'Messages', path: '/operator/alerts', icon: Bot },
-    { name: 'Documents', path: '/operator/training', icon: FileText },
-    { name: 'Profile', path: '/operator/safety-check', icon: Users },
+    { name: 'Training', path: '/operator/training', icon: GraduationCap },
   ];
 
   const navItems = isAdmin ? adminNav : operatorNav;
